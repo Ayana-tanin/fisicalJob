@@ -7,14 +7,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.state import StatesGroup, State
-from dotenv import load_dotenv
 from collections import defaultdict
 import uuid
 
-load_dotenv()
-TOKEN = os.getenv("TOKEN")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+TOKEN="7754219638:AAFv67IZiIxHCLwQ-W0nDsp1Aws3MZhCio8"
+CHANNEL_ID = -1002423189514
+ADMIN_ID = 5320545212
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
