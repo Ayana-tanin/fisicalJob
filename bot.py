@@ -76,7 +76,7 @@ async def get_requisites(callback: types.CallbackQuery):
 async def add_job(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     contact_count = len(user_added_contacts.get(user_id, set()))
-    if contact_count < -1:
+    if contact_count < 5:
         await message.answer(f"❌ Вы добавили {contact_count}/5 контактов. Добавьте ещё!")
         return
     await state.set_state(JobPost.title)
