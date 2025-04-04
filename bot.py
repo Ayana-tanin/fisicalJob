@@ -43,7 +43,7 @@ class JobPost(StatesGroup):
 async def delete_and_notify(message: types.Message):
     await message.delete()
     keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="Написать боту", url="https://t.me/fisicalJob_bot")]]
+        inline_keyboard=[[InlineKeyboardButton(text="Написать боту", url="https://t.me/fisisalJob")]]
     )
     msg = await message.answer("Чтобы начать публикацию, перейдите к боту", reply_markup=keyboard)
     await asyncio.sleep(300)
@@ -74,7 +74,7 @@ async def get_requisites(callback: types.CallbackQuery):
 async def add_job(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     contact_count = len(user_added_contacts.get(user_id, set()))
-    if contact_count < 5:
+    if contact_count < -1:
         await message.answer(f"❌ Вы добавили {contact_count}/5 контактов. Добавьте ещё!")
         return
     await state.set_state(JobPost.title)
@@ -109,21 +109,30 @@ async def process_details(message: types.Message, state: FSMContext):
     await state.update_data(details=message.text)
     await state.set_state(JobPost.contact)
     await message.answer("Контакты работодателя?")
-
+    
 @router.message(StateFilter(JobPost.contact))
 async def process_contact(message: types.Message, state: FSMContext):
     data = await state.get_data()
     data["contact"] = message.text
-    
+
     job_id = str(uuid.uuid4())      
     job_post = (f"📢 Вакансия: {data['title']}\n💰 Оплата: {data['payment']}\n📍 Местоположение: {data['location']}\n👥 Возраст: {data['age']}\nℹ️ Условия: {data['details']}\n☎️ Контакты: {data['contact']}")
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Откликнуться", callback_data=f"apply_{job_id}")]])
+
+    employer_id = message.chat.id  # ID работодателя
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Откликнуться", callback_data=f"apply_{job_id}")],
+        [InlineKeyboardButton(text="Связаться с работодателем", url=f"tg://user?id={employer_id}")]
+    ])
+    
     msg = await bot.send_message(CHANNEL_ID, job_post, reply_markup=keyboard)
+    
     jobs[job_id] = {
         "count": 0,
-        "employer": message.chat.id,
+        "employer": employer_id,
         "applicants": [],
         "contact": data["contact"],
+        "message_id": msg.message_id  # ID сообщения для удаления
     }
     
     await message.answer("✅ Вакансия опубликована!")
@@ -146,7 +155,7 @@ async def apply(callback_query: types.CallbackQuery):
         jobs[job_id]["count"] += 1
         employer_id = jobs[job_id]["employer"]
 
-        await bot.send_message(employer_id, f"🔔 Новый отклик на вашу вакансию!\n👤 Кандидат: @{callback_query.from_user.username}\n📩 Свяжитесь с ним напрямую.")
+        await bot.send_message(employer_id, f"🔔 Новый отклик на вашу вакансию!\n👤 Кандидат: {username}\n📩 Свяжитесь с ним напрямую.")
 
         if jobs[job_id]["count"] >= 15:
             applicants_info = "\n".join(
@@ -154,10 +163,12 @@ async def apply(callback_query: types.CallbackQuery):
                  for user_id in jobs[job_id]["applicants"]]
             )
             await bot.send_message(employer_id, f"🚨 Вакансия {job_id} закрыта!\nСписок откликнувшихся:\n{applicants_info}")
-            await bot.delete_message(CHANNEL_ID, job_id) 
+            
+            # Удаление вакансии из канала
+            await bot.delete_message(CHANNEL_ID, jobs[job_id]["message_id"])  
             del jobs[job_id] 
 
-    await callback_query.answer("✅ Ваш отклик отправлен работодателю!")
+    await callback_query.answer("✅ Ваш отклик отправлен работодателю!")  
 
 async def main():
     dp.include_router(router)
