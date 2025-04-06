@@ -44,7 +44,7 @@ class JobPost(StatesGroup):
 async def delete_and_notify(message: types.Message):
     await message.delete()
     keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="Написать боту", url="https://t.me/fisisalJob_bot")]]
+        inline_keyboard=[[InlineKeyboardButton(text="Написать боту", url="https://t.me/fisicalJob_bot")]]
     )
     msg = await message.answer("Чтобы начать публикацию, перейдите к боту", reply_markup=keyboard)
     await asyncio.sleep(300)
