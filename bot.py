@@ -5,27 +5,28 @@ from aiogram import Bot, Dispatcher, Router, types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatMemberUpdated
 from aiogram.fsm.state import StatesGroup, State
 from collections import defaultdict
 import uuid
+from aiogram.client.default import DefaultBotProperties
 
 TOKEN="7754219638:AAFv67IZiIxHCLwQ-W0nDsp1Aws3MZhCio8"
 CHANNEL_ID = -1002423189514
 ADMIN_ID = 5320545212
 
-bot = Bot(token=TOKEN)
+bot = Bot(
+    token=TOKEN,
+    default=DefaultBotProperties(parse_mode="HTML"),
+    chat_member_updates=True
+)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
-# Настройка логирования
+
+# Логирование
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Инициализация бота и диспетчера
-bot = Bot(token=TOKEN)
-dp = Dispatcher(storage=MemoryStorage())
-router = Router()
-
-# Словари для хранения данных
+# Хранилища
 user_added_contacts = defaultdict(set)
 approved_users = {}
 jobs = {}
@@ -43,7 +44,7 @@ class JobPost(StatesGroup):
 async def delete_and_notify(message: types.Message):
     await message.delete()
     keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="Написать боту", url="https://t.me/fisisalJob")]]
+        inline_keyboard=[[InlineKeyboardButton(text="Написать боту", url="https://t.me/fisisalJob_bot")]]
     )
     msg = await message.answer("Чтобы начать публикацию, перейдите к боту", reply_markup=keyboard)
     await asyncio.sleep(300)
@@ -61,7 +62,7 @@ async def start(message: types.Message):
 
 @router.callback_query(F.data == "add_contacts")
 async def add_contacts(callback: types.CallbackQuery):
-    await callback.message.answer("Добавьте 5 контактов в группу https://t.me/fisicalJob")
+    await callback.message.answer("Добавьте 5 контактов в группу https://t.me/fisisalJob")
     await callback.answer()
 
 @router.callback_query(F.data == "get_requisites")
@@ -70,13 +71,34 @@ async def get_requisites(callback: types.CallbackQuery):
     await callback.message.answer("📩 Свяжитесь с админом для оплаты: @ant_anny")
     await callback.answer()
 
+    
+@router.chat_member()
+async def track_new_members(event: ChatMemberUpdated):
+    try:
+        # Проверка только на нужный канал
+        if event.chat.id != CHANNEL_ID:
+            return
+
+        new_user = event.new_chat_member
+        inviter = event.from_user
+
+        # Только если пользователь был добавлен вручную (а не сам вступил)
+        if inviter and new_user and inviter.id != new_user.user.id:
+            user_added_contacts[inviter.id].add(new_user.user.id)
+            logging.info(f"[+] User {new_user.user.id} был добавлен пользователем {inviter.id}")
+    except Exception as e:
+        logging.error(f"Ошибка в track_new_members: {e}")
+
 @router.message(Command("add_job"))
 async def add_job(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     contact_count = len(user_added_contacts.get(user_id, set()))
-    if contact_count < -1:
+    logging.info(f"👤 User {user_id} добавил {contact_count} контактов")
+
+    if contact_count <= 5:
         await message.answer(f"❌ Вы добавили {contact_count}/5 контактов. Добавьте ещё!")
         return
+
     await state.set_state(JobPost.title)
     await message.answer("Введите название вакансии:")
 
@@ -164,7 +186,6 @@ async def apply(callback_query: types.CallbackQuery):
             )
             await bot.send_message(employer_id, f"🚨 Вакансия {job_id} закрыта!\nСписок откликнувшихся:\n{applicants_info}")
             
-            # Удаление вакансии из канала
             await bot.delete_message(CHANNEL_ID, jobs[job_id]["message_id"])  
             del jobs[job_id] 
 
