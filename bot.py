@@ -76,15 +76,74 @@ async def get_requisites(callback: types.CallbackQuery):
     await bot.send_message(ADMIN_ID, f"Пользователь @{callback.from_user.username} хочет получить реквизиты для оплаты.")
     await callback.message.answer("💳 MBank: 996 551 71 45 47\nПосле оплаты свяжитесь с @ant_anny. Также можем предоставить другие реквизиты.")
     await callback.answer()
+    
+@router.message(Command("my_jobs"))
+async def my_jobs(message: types.Message):
+    user_id = message.from_user.id
+    user_jobs = [job_id for job_id, job in jobs.items() if job["employer"] == user_id]
+    
+    if not user_jobs:
+        await message.answer("У вас нет опубликованных вакансий.")
+        return
+    
+    job_list = ""
+    for job_id in user_jobs:
+        job = jobs[job_id]
+        job_list += (
+            f"📢 Вакансия: {job['title']}\n"
+            f"💰 Оплата: {job['payment']}\n"
+            f"📍 Местоположение: {job['location']}\n"
+            f"👥 Возраст: {job['age']}\n"
+            f"ℹ️ Условия: {job['details']}\n"
+            f"☎️ Контакты: {job['contact']}\n\n" 
+        )
+        
+    await message.answer(f"Ваши вакансии:\n\n{job_list}")
 
+
+@router.message(Command("delete_job"))
+async def delete_job(message: types.Message):
+    user_id = message.from_user.id
+    job_list = [job_id for job_id, job in jobs.items() if job["employer"] == user_id]
+
+    if not job_list:
+        await message.answer("У вас нет опубликованных вакансий для удаления.")
+        return
+    
+    job_buttons = [
+        [InlineKeyboardButton(text=f"Удалить {job_id}", callback_data=f"delete_{job_id}")]
+        for job_id in job_list
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=job_buttons)
+    
+    await message.answer("Выберите вакансию для удаления:", reply_markup=keyboard)
+
+@router.message(Command("delete_job"))
+async def delete_job(message: types.Message):
+    user_id = message.from_user.id
+    job_list = [job_id for job_id, job in jobs.items() if job["employer"] == user_id]
+
+    if not job_list:
+        await message.answer("У вас нет опубликованных вакансий для удаления.")
+        return
+    
+    job_buttons = [
+        [InlineKeyboardButton(text=f"Удалить {job_id}", callback_data=f"delete_{job_id}")]
+        for job_id in job_list
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=job_buttons)
+    
+    await message.answer("Выберите вакансию для удаления:", reply_markup=keyboard)
 
 @router.callback_query(F.data == "help")
 async def show_help(callback: types.CallbackQuery):
     text = (
         "Данный бот публикует ваши вакансии в чат и уведомляет о всех откликнувшихся.\n"
         "Для публикации необходимо добавить 5 контактов или оплатить 100 сом.\n"
-        "Желаете оплатить или удалить вакансию свяжитесь с администратором — @ant_anny, @AkylaiMamyt \n"
+        "Желаете оплатить — нажмите /get_requisites \n"
         "Для публикации вакансии — /add_job\n"
+        "Для удаления вакансии — /delete_job\n"
+        "Просмотр всех ваших опубликованных вакансий — /my_jobs"
     )
     await callback.message.answer(text)
     await callback.answer()
