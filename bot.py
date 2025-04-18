@@ -16,6 +16,8 @@ from typing import Union
 TOKEN="7754219638:AAHlCG9dLX-wJ4f6zuaPQDARkB-WtNshv8o"
 CHANNEL_ID=-1002423189514
 ADMIN_ID=5320545212
+DATA_FILE = 'user_data.json'
+ADMINS = [5320545212, 5402160054 ]
 
 # Инициализация
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode="HTML"), chat_member_updates=True)
@@ -42,13 +44,14 @@ class AddMembersState(StatesGroup):
 
 @router.message(StateFilter(None), F.text & ~F.text.startswith("/"))
 async def delete_message(message: types.Message):
-    await message.delete()
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Добавить 5 контактов", url="https://t.me/fisicalJob_bot")]
-    ])
-    msg = await message.answer("Чтобы разместить вакансию, перейдите к боту.", reply_markup=keyboard)
-    await asyncio.sleep(60)
-    await msg.delete()
+    if message.from_user.id not in ADMINS:
+        await message.delete()
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Добавить 1 контакт", url="https://t.me/fisicalJob_bot")]
+        ])
+        msg = await message.answer("Чтобы разместить вакансию, перейдите к боту.", reply_markup=keyboard)
+        await asyncio.sleep(60)
+        await msg.delete()
 
 @router.message(Command("start"))
 async def start(message: types.Message):
@@ -57,12 +60,12 @@ async def start(message: types.Message):
         [InlineKeyboardButton(text="Получить реквизиты", callback_data="get_requisites")],
         [InlineKeyboardButton(text="Help", callback_data="help")]
     ])
-    await message.answer("Добрый день! Для публикации вакансии добавьте 5 контактов и вызовите /add_job или оплатите 100 сом.", reply_markup=keyboard)
+    await message.answer("Добрый день! Для публикации вакансии добавьте 1 контакт и вызовите /add_job или можете оплатить 100 сом и выложить.", reply_markup=keyboard)
 
 @router.callback_query(F.data == "add_contacts")
 async def add_contacts(cb: types.CallbackQuery):
     await cb.message.answer(
-        "Чтобы продолжить, добавьте 5 человек в нашу группу, затем вернитесь сюда.",
+        "Чтобы продолжить, добавьте 1 человека в нашу группу, затем вернитесь сюда.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[
                 InlineKeyboardButton(text="➕ Добавить в группу", url="https://t.me/tezJumush")
@@ -90,8 +93,7 @@ async def delete_job(message: types.Message):
 async def show_help(callback: types.CallbackQuery):
     text = (
         "Данный бот публикует ваши вакансии в чат и уведомляет о всех откликнувшихся.\n"
-        "Для публикации необходимо добавить 5 контактов или оплатить 100 сом.\n"
-        "Желаете оплатить — нажмите /get_requisites \n"
+        "Для публикации необходимо добавить 1 контакт или оплатить 100 сом.\n"
         "Для публикации вакансии или удаления свяжитесь с администратором @ant_anny @AkylaiMamyt"
     )
     await callback.message.answer(text)
@@ -118,7 +120,7 @@ async def add_job(message: types.Message, state: FSMContext):
     # Проверяем количество добавленных контактов через словарь
     if len(user_added_contacts.get(user_id, set())) < 1:
         await message.answer(
-            f"❗ Вы добавили {len(user_added_contacts.get(user_id, set()))} из 5 человек. Пожалуйста, добавьте ещё."
+            f"❗ Вы добавили {len(user_added_contacts.get(user_id, set()))} из 1 человек. Пожалуйста, добавьте одного человека."
         )
         return
     await state.set_state(JobPost.title)
