@@ -29,7 +29,25 @@ logging.basicConfig(level=logging.INFO)
 # Хранилище
 user_added_contacts = defaultdict(set)
 jobs = {}
-json_file = "data.json"
+json_file = "user_data.json"
+
+def save_data():
+    with open(DATA_FILE, 'w') as f:
+        json.dump({
+            "jobs": jobs,
+            "user_added_contacts": {str(k): list(v) for k, v in user_added_contacts.items()}
+        }, f)
+
+def load_data():
+    global jobs, user_added_contacts
+    try:
+        with open(DATA_FILE, 'r') as f:
+            data = json.load(f)
+            jobs.update(data.get("jobs", {}))
+            for k, v in data.get("user_added_contacts", {}).items():
+                user_added_contacts[int(k)] = set(v)
+    except FileNotFoundError:
+        pass
 
 class JobPost(StatesGroup):
     title = State()
@@ -52,6 +70,7 @@ async def delete_message(message: types.Message):
         msg = await message.answer("Чтобы разместить вакансию, перейдите к боту.", reply_markup=keyboard)
         await asyncio.sleep(60)
         await msg.delete()
+        return
 
 @router.message(Command("start"))
 async def start(message: types.Message):
@@ -76,7 +95,8 @@ async def add_contacts(cb: types.CallbackQuery):
 
 @router.callback_query(F.data == "get_requisites")
 async def get_requisites(callback: types.CallbackQuery):
-    await bot.send_message(ADMIN_ID, f"Пользователь @{callback.from_user.username} хочет получить реквизиты для оплаты.")
+    username = callback.from_user.username or "(без username)"
+    await bot.send_message(ADMIN_ID, f"Пользователь {username} хочет получить реквизиты.")
     await callback.message.answer("💳 MBank: 996 551 71 45 47\nПосле оплаты свяжитесь с @ant_anny. Также можем предоставить другие реквизиты.")
     await callback.answer()
     
@@ -112,6 +132,11 @@ async def track_invites(event: ChatMemberUpdated):
         user_added_contacts[inviter.id].add(new_user.user.id)
         print(user_added_contacts[inviter.id])  # print updated set
         logging.info(f"User {inviter.id} added {new_user.user.id} to the group.")
+
+@router.message(Command("cancel"))
+async def cancel(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("✅ Состояние сброшено.")
 
 @router.message(Command("add_job"))
 async def add_job(message: types.Message, state: FSMContext):
@@ -197,15 +222,27 @@ async def apply_job(callback: types.CallbackQuery):
 @router.message(F.contact)
 async def contact_share(message: types.Message):
     user_id = message.from_user.id
+    contact = message.contact.phone_number
     for job_id, job in jobs.items():
         if user_id in job["applicants"]:
-            contact = message.contact.phone_number
             employer_id = job["employer"]
-            await bot.send_message(employer_id, f"📞 Новый отклик\nПользователь: @{message.from_user.username}\nНомер телефона: {contact}")
-            break
-    await message.answer("Спасибо! Контакт отправлен работодателю.", reply_markup=ReplyKeyboardRemove())
-
+            try:
+                await bot.send_message(
+                    employer_id,
+                    f"📲 Новый отклик на вакансию!\n"
+                    f"Пользователь: @{message.from_user.username or 'Без username'}\n"
+                    f"Номер: {contact}"
+                )
+                await message.answer("📨 Ваш номер отправлен работодателю!", reply_markup=ReplyKeyboardRemove())
+                return
+            except Exception as e:
+                logging.error(f"Ошибка при отправке номера работодателю: {e}")
+                await message.answer("⚠️ Произошла ошибка. Попробуйте позже.")
+                return
+    await message.answer("❗ Вы не откликались на вакансии.")
+    
 async def main():
+    load_data()
     dp.include_router(router)
     await dp.start_polling(bot)
 
