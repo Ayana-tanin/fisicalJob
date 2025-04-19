@@ -62,16 +62,14 @@ class AddMembersState(StatesGroup):
 
 @router.message(StateFilter(None), F.text & ~F.text.startswith("/"))
 async def delete_message(message: types.Message):
-    if message.from_user.id not in ADMINS:
-        await message.delete()
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Добавить 1 контакт", url="https://t.me/fisicalJob_bot")]
+    await message.delete()
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Добавить 1 контакт", url="https://t.me/fisicalJob_bot")]
         ])
-        msg = await message.answer("Чтобы разместить вакансию, перейдите к боту.", reply_markup=keyboard)
-        await asyncio.sleep(60)
-        await msg.delete()
-        return
-
+    msg = await message.answer("Чтобы разместить вакансию, перейдите к боту.", reply_markup=keyboard)
+    await asyncio.sleep(60)
+    await msg.delete()
+    
 @router.message(Command("start"))
 async def start(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
