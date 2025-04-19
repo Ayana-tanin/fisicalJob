@@ -16,6 +16,10 @@ ADMIN_ID=5320545212
 DATA_FILE = 'user_data.json'
 ADMINS = [5320545212, 5402160054 ]
 
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode="HTML"), chat_member_updates=True)
+dp = Dispatcher(storage=MemoryStorage())
+router = Router()
+
 def start_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Разместить задачу", callback_data="show_admin")],
