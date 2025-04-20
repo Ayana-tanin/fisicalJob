@@ -6,7 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 TOKEN = "8136864493:AAHVli5_gl0LCDrvCdsMhgXiq3irmBTZQ0Y"
-CHANNEL_ID = -1002586848325
+CHANNEL_ID = -1002423189514
 ADMIN_ID = 5320545212
 ADMINS = [5320545212, 5402160054]
 
