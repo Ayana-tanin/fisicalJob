@@ -1,24 +1,32 @@
 import asyncio
-import logging
-from collections import defaultdict
 from aiogram import Bot, Dispatcher, Router, types, F
 from aiogram.filters import Command, StateFilter
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatMemberUpdated
 from aiogram.client.default import DefaultBotProperties
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Константы
-TOKEN="7754219638:AAHlCG9dLX-wJ4f6zuaPQDARkB-WtNshv8o"
-CHANNEL_ID=-1002423189514
-ADMIN_ID=5320545212
-DATA_FILE = 'user_data.json'
-ADMINS = [5320545212, 5402160054 ]
+TOKEN = "8136864493:AAHVli5_gl0LCDrvCdsMhgXiq3irmBTZQ0Y"
+CHANNEL_ID = -1002586848325
+ADMIN_ID = 5320545212
+ADMINS = [5320545212, 5402160054]
 
-bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode="HTML"), chat_member_updates=True)
-dp = Dispatcher(storage=MemoryStorage())
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)
 router = Router()
+
+@router.message(StateFilter(None), F.text & ~F.text.startswith("/"))
+async def delete_message(message: types.Message):
+    if message.from_user.id not in ADMINS:
+        await message.delete()
+        msg = await message.answer(
+            "Чтобы разместить вакансию, перейдите к боту.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Перейти к боту", url="https://t.me/fisicalJob_bot")]
+            ])
+        )
+        await asyncio.sleep(100)
+        await msg.delete()
 
 def start_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -26,42 +34,28 @@ def start_keyboard():
         [InlineKeyboardButton(text="Найти подработку", url="https://t.me/tezJumush")]
     ])
 
-# /start
 @router.message(Command("start"))
 async def start(message: types.Message):
-    await message.answer("👋 Привет! Я — бот платформы Tez Jumush. Хочешь найти помощника или подработку?", reply_markup=start_keyboard())
+    await message.answer("👋 Привет! Я — бот платформы Tez Jumush.", reply_markup=start_keyboard())
 
-# Проверка публикации
-@router.message(StateFilter(None), F.text & ~F.text.startswith("/"))
-async def delete_message(message: types.Message):
-    if message.from_user.id not in ADMINS:
-        await message.delete()
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Перейдите к боту", url="https://t.me/fisicalJob_bot")]
-        ])
-        msg = await message.answer("Чтобы разместить вакансию, перейдите к боту.", reply_markup=keyboard)
-        await asyncio.sleep(100)
-        await msg.delete()
 
-# Добавление контактов
 @router.callback_query(F.data == "show_admin")
 async def show_admin(cb: types.CallbackQuery):
-    admin_id = ADMIN_ID  # Admin's Telegram ID
     await cb.message.answer(
-        "Бот временно в ремонте, для того чтобы выложить вакансию свяжитесь с администратором. И мы все выложим",
+        "Бот временно в ремонте. Свяжитесь с администратором:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Написать администратору", url=f"tg://user?id={admin_id}")]
+            [InlineKeyboardButton(text="Написать администратору", url=f"tg://user?id={ADMIN_ID}")]
         ])
     )
+    print("Получен callback:", cb.data)
     await cb.answer()
 
-@router.callback_query(F.data == "add_contacts")
-async def add_contacts(cb: types.CallbackQuery):
-    await cb.message.answer(
-        "Чтобы продолжить, добавьте 1 человека в нашу группу, затем вернитесь сюда.",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="➕ Добавить в группу", url="https://t.me/tezJumush")],
-            [InlineKeyboardButton(text="Все готово добавил", callback_data="track_invites")]
-        ])
-    )
-    await cb.answer()
+async def main():
+    dp.include_router(router)
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        print("Бот остановлен вручную.")
