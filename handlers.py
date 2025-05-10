@@ -31,6 +31,7 @@ async def send_job_actions(message: Message, job_id: int):
             [InlineKeyboardButton(text="❌ Удалить вакансию", callback_data=f"action_delete_{job_id}")],
             [InlineKeyboardButton(text="🔄 Опубликовать ещё", callback_data=f"create_vacancy")],
             [InlineKeyboardButton(text="👤 Связаться с админом", callback_data="action_contact_admin")],
+            InlineKeyboardButton(text="📋 Посмотреть вакансии", callback_data="show_vacancies")
         ]
     )
     await message.answer("Выберите действие:", reply_markup=kb)
@@ -195,29 +196,28 @@ async def action_contact_admin(call: CallbackQuery):
     await call.answer()
     await call.message.answer(f"👤 Связаться с администратором: @{ADMIN_USERNAME}")
 
-async def send_job_actions(message: Message, job_id: int):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="❌ Удалить вакансию",
-                callback_data=f"action_delete_{job_id}"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="Опубликовать вакансию",
-                callback_data="create_vacancy"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="👤 Связаться с админом",
-                callback_data="action_contact_admin"
-            )
-        ],
-    ])
-    await message.answer(
-        "Выберите действие:",
-        reply_markup=kb
-    )
+@router.callback_query(F.data == "show_vacancies")
+async def show_user_vacancies(call: CallbackQuery, bot: Bot):
+    await call.answer()
+    user_id = call.from_user.id
+    vacancies = await get_user_vacancies(user_id)
+    if not vacancies:
+        await call.message.answer("У вас пока нет опубликованных вакансий.")
+        return
+    for job in vacancies:
+        info = job.all_info if isinstance(job.all_info, dict) else eval(job.all_info)
+        text = (
+            f"🆔 <b>{job.id}</b>\n"
+            f"📍 {info.get('address','—')}\n"
+            f"📝 {info.get('title','—')}\n"
+            f"💵 {info.get('payment','—')}\n"
+            f"☎️ {info.get('contact','—')}\n"
+        )
+        if info.get('extra'):
+            text += f"📌 {info['extra']}\n"
+        # кнопка удаления каждой вакансии
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="❌ Удалить", callback_data=f"action_delete_{job.id}")]
+        ])
+        await call.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
 
