@@ -1,4 +1,5 @@
-aiogram
-python-dotenv
-sqlalchemy
-asyncpg
+aiogram==3.1.2
+asyncpg==0.26.0
+SQLAlchemy==1.4.49
+fastapi==0.95.1
+uvicorn[standard]==0.23.1

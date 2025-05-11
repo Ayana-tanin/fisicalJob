@@ -1,14 +1,22 @@
+# db_base.py
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.future import select
+from sqlalchemy.orm import declarative_base, sessionmaker
+from config import DATABASE_URL
 
-DATABASE_URL = "postgresql+asyncpg://postgres:1234509876@localhost:5432/tez_jumush"
+# 1) Движок SQLAlchemy — берёт URL из config.py
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,    # логи SQL будут подавлены
+    future=True    # режим 2.0
+)
 
-# Создаем асинхронный движок
-engine = create_async_engine(DATABASE_URL, echo=True)
+# 2) Фабрика сессий: указываем AsyncSession прямо
+SessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+)
 
-# Создаем сессию для асинхронных операций
-SessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
-
-# Базовый класс для моделей
+# 3) Базовый класс моделей
 Base = declarative_base()
