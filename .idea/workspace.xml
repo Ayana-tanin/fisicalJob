@@ -5,14 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2503569c-4992-4d88-9577-70b08091db36" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bot.py" beforeDir="false" afterPath="$PROJECT_DIR$/bot.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/db_base.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db_connection.py" beforeDir="false" afterPath="$PROJECT_DIR$/db_connection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers.py" beforeDir="false" afterPath="$PROJECT_DIR$/handlers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -119,7 +112,7 @@
       <workItem from="1746688657374" duration="1781000" />
       <workItem from="1746705362385" duration="5645000" />
       <workItem from="1746733444149" duration="8602000" />
-      <workItem from="1746777177094" duration="68220000" />
+      <workItem from="1746777177094" duration="69378000" />
     </task>
     <servers />
   </component>
