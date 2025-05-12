@@ -4,7 +4,7 @@ import logging
 
 from aiogram import Router, Bot, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.enums import ChatType, ParseMode
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -15,10 +15,10 @@ from db_connection import (
     save_vacancy,
     get_user_vacancies,
     delete_vacancy_by_id,
-    get_session
+    get_session, really_save_vacancy
 )
 from models import Job
-from config import CHANNEL_ID, CHANNEL_URL, ADMINS
+from config import CHANNEL_ID, CHANNEL_URL, ADMINS, ADMIN_USERNAME
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -92,17 +92,31 @@ async def process_vacancy(msg: Message, state: FSMContext, bot: Bot):
         await state.clear()
         return
     if job == 0:
-        await msg.reply("🔔 Дневной лимит вакансий исчерпан.")
-        await state.clear()
-        return
+        if msg.from_user.id in ADMINS:
+            # Сохраняем без ограничений
+            job = await really_save_vacancy(user_id=msg.from_user.id, data=data)
+        else:
+            await msg.answer(
+                "🔒 Вы уже опубликовали 1 вакансию.\n"
+                "Чтобы публиковать больше:\n\n"
+                "💰 Оплатите 100 сом админу <b>или </b>\n"
+                "👥 Пригласите 3 друзей в группу.\n\n"
+                "После этого админ даст вам доступ.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="👤 Связаться с админом", url=f"https://t.me/{ADMIN_USERNAME}")]
+                ])
+            )
+            await state.clear()
+            return
+
     # URL для отклика
-    if msg.from_user.username:
-        reply_url = f"https://t.me/{msg.from_user.username}"
-    else:
-        reply_url = f"tg://user?id={msg.from_user.id}"
-    markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💬 Откликнуться", url=reply_url)]
-    ])
+    # if msg.from_user.username:
+    #     reply_url = f"https://t.me/{msg.from_user.username}"
+    # else:
+    #     reply_url = f"tg://user?id={msg.from_user.id}"
+    # markup = InlineKeyboardMarkup(inline_keyboard=[
+    #     [InlineKeyboardButton(text="💬 Откликнуться", url=reply_url)]
+    # ])
     posted = await bot.send_message(
         chat_id=CHANNEL_ID,
         text=(f"<b>Вакансия: {data['title']}</b>  ол\n"
@@ -111,7 +125,7 @@ async def process_vacancy(msg: Message, state: FSMContext, bot: Bot):
             f"☎️Контакт: {data['contact']}"
             + (f"\n📌Примечание: {data['extra']}" if data.get("extra") else "")
         ),
-        reply_markup=markup,
+        # reply_markup=markup,
         parse_mode=ParseMode.HTML
     )
     # Сохраняем message_id для последующего удаления
@@ -120,7 +134,7 @@ async def process_vacancy(msg: Message, state: FSMContext, bot: Bot):
             update(Job).where(Job.id == job.id).values(message_id=posted.message_id)
         )
         await session.commit()
-    await msg.answer("✅ Ваша вакансия опубликована. \n\n Для удаления вызовите мои вакансии",
+    await msg.answer("✅ Ваша вакансия опубликована. \n\n Для <b> удаления </b> вызовите мои вакансии",
                      reply_markup=kb_menu)
     await state.clear()
 
@@ -210,3 +224,36 @@ async def block_non_admins(message: Message):
                 logger.error(f"Не удалось удалить предупреждение: {e}")
     except Exception as e:
         logger.error(f"Ошибка в block_non_admins: {e}")
+
+@router.message(Command("allow_posting"), F.chat.type == ChatType.PRIVATE)
+async def allow_posting_command(msg: Message):
+    if msg.from_user.id not in ADMINS:
+        await msg.reply("❌ Только админы могут использовать эту команду.")
+        return
+
+    args = msg.text.split(maxsplit=1)
+    if len(args) < 2:
+        await msg.reply("⚠️ Использование: /allow_posting @username или ID")
+        return
+
+    identifier = args[1].strip().lstrip("@")
+
+    # Определяем тип: username или ID
+    if identifier.isdigit():
+        user_id = int(identifier)
+        username = ""
+    else:
+        user_id = None
+        username = identifier
+
+    # Получаем или создаём пользователя
+    user = await insert_user(user_id or 0, {"username": username} if username else "")
+
+    if user:
+        user.can_post = True
+        async with get_session() as session:
+            session.add(user)
+            await session.commit()
+        await msg.reply(f"✅ Пользователю {'@' + username if username else user_id} разрешена публикация.")
+    else:
+        await msg.reply("❌ Не удалось найти или создать пользователя.")

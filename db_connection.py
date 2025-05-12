@@ -3,11 +3,13 @@ import datetime
 
 from sqlalchemy import text, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from config import ADMINS
 from db_base import engine, SessionLocal, Base
 from models import User, Job
 
 logger = logging.getLogger(__name__)
-DAILY_LIMIT = 5  # лимит вакансий в день
+DAILY_LIMIT = 1  # лимит вакансий в день
 
 
 async def init_db() -> None:
@@ -38,7 +40,6 @@ async def insert_user(user_id: int, username: str) -> User | None:
             logger.exception("insert_user")
             return None
 
-
 async def save_vacancy(user_id: int, data: dict) -> Job | int | None:
     """
     Сохраняет вакансию:
@@ -54,7 +55,16 @@ async def save_vacancy(user_id: int, data: dict) -> Job | int | None:
             if not user or not user.can_post:
                 return None
 
-            # 2) Лимит вакансий за сегодня
+            # 🛠️ ⬇️ Новое поведение: если админ, сразу сохраняем
+            if user.telegram_id in ADMINS:
+                job = Job(user_id=user.id, all_info=data)
+                session.add(job)
+                await session.commit()
+                await session.refresh(job)
+                logger.info(f"[ADMIN] Вакансия #{job.id} сохранена")
+                return job
+
+            # 2) Лимит для обычных пользователей
             today = datetime.datetime.utcnow().date()
             midnight = datetime.datetime.combine(today, datetime.time.min)
             cnt_res = await session.execute(
@@ -64,19 +74,18 @@ async def save_vacancy(user_id: int, data: dict) -> Job | int | None:
             if cnt_res.scalar_one() >= DAILY_LIMIT:
                 return 0
 
-            # 3) Сохраняем сам объект Job
+            # 3) Сохраняем обычную вакансию
             job = Job(user_id=user.id, all_info=data)
             session.add(job)
             await session.commit()
             await session.refresh(job)
-            logger.info(f"Вакансия #{job.id} сохранена (pending)")
+            logger.info(f"Вакансия #{job.id} сохранена")
             return job
 
         except:
             await session.rollback()
             logger.exception("save_vacancy")
             return None
-
 
 async def get_user_vacancies(user_id: int) -> list[Job]:
     async with get_session() as session:
@@ -118,3 +127,13 @@ async def delete_vacancy_by_id(vacancy_id: int) -> bool:
             await session.rollback()
             logger.exception("delete_vacancy_by_id")
             return False
+
+async def really_save_vacancy(user_id: int, data: dict) -> Job:
+    async with get_session() as session:
+        job = Job(user_id=user_id, all_info=data)
+        session.add(job)
+        await session.commit()
+        await session.refresh(job)
+        logger.info(f"Админ-вакансия #{job.id} сохранена")
+        return job
+
