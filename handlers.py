@@ -83,7 +83,7 @@ async def process_vacancy(msg: Message, state: FSMContext, bot: Bot):
             await msg.reply(f"❌ Поле '{fld}' не найдено. Повторите по шаблону.")
             return
     if not PHONE_RE.match(data["contact"]):
-        await msg.reply("❌ Неверный формат номера. Пример: +996501234567")
+        await msg.reply("❌ Неверный формат номера или написан текст. Пример: +996501234567")
         return
     # Сохранение
     job = await save_vacancy(msg.from_user.id, data)
@@ -105,7 +105,7 @@ async def process_vacancy(msg: Message, state: FSMContext, bot: Bot):
     ])
     posted = await bot.send_message(
         chat_id=CHANNEL_ID,
-        text=(f"✨ <b>Вакансия: {data['title']}</b> ✨\n"
+        text=(f"<b>Вакансия: {data['title']}</b>  ол\n"
             f"📍Адрес: {data['address']}\n"
             f"💵Оплата: {data['payment']}\n"
             f"☎️Контакт: {data['contact']}"
@@ -179,32 +179,6 @@ async def delete_vacancy_handler(call: CallbackQuery, bot: Bot):
         await call.answer("✅ Вакансия удалена.", show_alert=True)
         # обновляем клавиатуру, убираем кнопку
         new_buttons = [row for row in call.message.reply_markup.inline_keyboard if row[0].callback_data != f"del:{vid}"]
-        await call.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=new_buttons))
-    else:
-        await call.answer("❌ Ошибка при удалении.", show_alert=True)
-
-# Следующий хэндлер... вакансии из канала и из базы
-@router.callback_query(lambda c: c.data and c.data.startswith("del:"))
-async def delete_vacancy_handler(call: CallbackQuery, bot: Bot):
-    await call.answer()
-    vid = int(call.data.split(":",1)[1])
-    # получаем вакансию
-    job = await get_user_vacancies(call.from_user.id)
-    job = next((j for j in job if j.id == vid), None)
-    if not job:
-        return await call.answer("Вакансия не найдена.", show_alert=True)
-    # удаляем из канала
-    if job.message_id:
-        try:
-            await bot.delete_message(chat_id=CHANNEL_ID, message_id=job.message_id)
-        except Exception as e:
-            logger.error(f"Не удалось удалить сообщение в канале #{vid}: {e}")
-    # удаляем из базы
-    ok = await delete_vacancy_by_id(vid)
-    if ok:
-        await call.answer("✅ Вакансия удалена.", show_alert=True)
-        # обновляем клавиатуру — убираем кнопку удалённой вакансии
-        new_buttons = [row for row in call.message.reply_markup.inline_keyboard if not row[0].callback_data == f"del:{vid}"]
         await call.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=new_buttons))
     else:
         await call.answer("❌ Ошибка при удалении.", show_alert=True)
