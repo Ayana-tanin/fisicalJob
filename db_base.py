@@ -1,18 +1,21 @@
 import ssl
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
-from config import DATABASE_URL
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
+from config import DATABASE_URL
 
+# Создаём SSL-контекст, отключая проверку сертификата
 ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
 
 engine = create_async_engine(
     DATABASE_URL,
-    connect_args={"ssl": ssl_context},
     echo=False,
-    future=True
+    future=True,
+    connect_args={"ssl": ssl_context}
 )
-# 2) Фабрика сессий: указываем AsyncSession прямо
+
 SessionLocal = sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -20,5 +23,4 @@ SessionLocal = sessionmaker(
     autoflush=False,
 )
 
-# 3) Базовый класс моделей
 Base = declarative_base()
