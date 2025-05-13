@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 async def main():
     # 1) Инициализация базы данных
-    await init_db()
+    init_db()
     logger.info("Инициализация базы завершена")
 
     # 2) Создаём контекст бота и диспетчера
