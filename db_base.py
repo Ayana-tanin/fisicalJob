@@ -1,17 +1,16 @@
+# db_base.py
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 from config import DATABASE_URL
 
-# отключение SSL для asyncpg
-connect_args = {"ssl": None}  # ← ключевое отличие
-
+# 1) Движок SQLAlchemy — берёт URL из config.py
 engine = create_async_engine(
     DATABASE_URL,
-    echo=False,
-    future=True,
-    connect_args=connect_args  # ← добавляем сюда
+    echo=False,    # логи SQL будут подавлены
+    future=True    # режим 2.0
 )
 
+# 2) Фабрика сессий: указываем AsyncSession прямо
 SessionLocal = sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -19,4 +18,5 @@ SessionLocal = sessionmaker(
     autoflush=False,
 )
 
+# 3) Базовый класс моделей
 Base = declarative_base()
